@@ -1,0 +1,279 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+    <meta charset="UTF-8">
+    <title>模擬面試</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            background-color: #43583b;
+            padding: 20px;
+            /* Adjust the top padding as needed */
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #app-name {
+            font-size: 24px;
+            /* Adjust the font size as needed */
+            font-weight: bold;
+        }
+
+        #web-name {
+            font-size: 24px;
+            /* Adjust the font size as needed */
+            font-weight: bold;
+        }
+
+        #user-info {
+            font-size: 18px;
+            /* Adjust the font size as needed */
+        }
+
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        nav ul li {
+            margin-right: 15px;
+        }
+
+        #content {
+            padding-top: 0px;
+            /* Adjust the top padding as needed */
+        }
+        .audio-hidden {
+            position: absolute;
+            left: -1000px;
+            top: -1000px;
+        }
+        .btn {
+            text-decoration: none;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+            /* Equal width for all buttons */
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .btn-info,
+        .btn-mock,
+        .btn-test,
+        .btn-identity {
+            text-align: center;
+            margin: 10px;
+        }
+
+        .page-links {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .page-links a {
+            text-decoration: none;
+            padding: 10px;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            font-size: 18px;
+            margin: 0 10px;
+            color: #007bff;
+        }
+
+        .page-links .btn-mock.disabled {
+            pointer-events: none;
+            color: #43583b;
+            border-color: #43583b;
+        }
+
+        #container {
+            position: relative;
+        }
+
+        #centerImage {
+            width: 800px;
+            height: 400px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #circleButton {
+            position: relative;
+            top: 5px;
+            left: 48.2%;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 20px 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        #circleButton.recording {
+            background-color: #ff0000;
+        }
+    </style>
+    </style>
+</head>
+
+<body>
+    <div id="content">
+        {% block content %}
+        <header>
+            <span id="web-name">{{ app_name }}</span>
+            <span id="app-name">模擬面試</span>
+            <nav>
+                <ul>
+                    <li id="user-info">Hello! {{ username }}</li>
+                    <a class="btn btn-primary" href="{% url 'signout' %}" role="button">登出</a>
+                </ul>
+            </nav>
+        </header>
+        <div class="page-links">
+            <a class="btn btn-info" href="{% url 'info' %}">推甄信息</a>
+            <a class="btn btn-mock disabled" href="{% url 'mock' %}">模擬面試</a>
+            <a class="btn btn-identity" href="{% url 'identity' %}">個人資訊</a>
+        </div>
+        <div class="page-links">
+            <a class="btn btn-test" href="{% url 'test' %}">文字面試 (Beta)</a>
+        </div>
+        {% endblock %}
+    </div>
+    <div id="container">
+        <img id="centerImage"
+            src="https://www.smartlinkin.com.tw/data/Article/2928/Article_4d43b0ba16dd8b2e3595a93.jpg?v=20181126001"
+            alt="Centered Image">
+        <button id="circleButton">Record</button>
+        <audio id="recordedAudio" class="audio-hidden" controls><source id="recordedAudioSource", src="{% static 'response.mp3' %}", type="audio/mpeg"></source></audio>
+    </div>
+    <form id="audioForm" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" id="audioFile" name="audioFile" style="display:none;">
+    </form>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.0/dist/js.cookie.min.js"></script>
+    <script src="{% static 'js/fix-webm-duration.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var recordButton = document.getElementById('circleButton');
+            var isRecording = false;
+            var mediaRecorder;
+            var chunks = [];
+            var recordedAudioElement = document.getElementById('recordedAudio');
+
+            var startTime;
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = function (e) {
+                        if (e && e.data.size > 0) {
+                            chunks.push(e.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = function () {
+                        var duration = Date.now() - startTime;
+                        var audioBlob = new Blob(chunks, { type: 'audio/webm' });
+
+                        console.log('audioBlob:', audioBlob);
+
+                        ysFixWebmDuration(audioBlob, duration, function (fixedBlob) {
+                            console.log('fixedBlob:', fixedBlob);
+                            // Convert Blob to File
+                            var audioFile = new File([audioBlob], 'recorded_audio.webm');
+
+                            console.log('audioFile:', audioFile);
+
+
+                            // Create a FormData object
+                            var formData = new FormData();
+                            formData.append('audioFile', audioFile);
+
+                            formData.forEach(function (value, key) {
+                                console.log('FormData (after appending):' + key + ': ' + value);
+                            });
+
+                            // Perform AJAX request
+                            var csrftoken = Cookies.get('csrftoken');
+                            $.ajaxSetup({
+                                headers: { 'X-CSRFToken': csrftoken }
+                            });
+                            $.ajax({
+                                url: '/mock/',
+                                type: 'POST',
+                                data: formData,
+                                contentType: false,
+                                processData: false,
+                                success: function (response) {
+                                    // Handle success, if needed
+                                    var audioUrl = response.audioUrl;
+                                    if (audioUrl) {
+                                        var recordedAudioSource = document.getElementById('recordedAudioSource');
+                                        // recordedAudioSource.src = audioUrl;
+                                        recordedAudioElement.load();
+                                        recordedAudioElement.play(); 
+                                    }
+                                    console.log('Audio file uploaded successfully');
+                                },
+                                error: function (xhr, status, error) {
+                                    // Handle error, if needed
+                                    console.error('Error uploading audio file:', error);
+                                }
+                            });
+
+                            chunks = [];
+                        });
+                    };
+
+
+                    recordButton.addEventListener('click', function () {
+                        if (isRecording) {
+                            // Stop recording
+                            mediaRecorder.stop();
+                            recordButton.classList.remove('recording');
+                            recordButton.textContent = 'Record';
+                        } else {
+                            // Start recording
+                            mediaRecorder.start();
+                            recordButton.classList.add('recording');
+                            recordButton.textContent = 'Stop';
+
+                            startTime = Date.now();
+                        }
+
+                        // Toggle recording state
+                        isRecording = !isRecording;
+                    });
+                })
+                .catch(function (err) {
+                    console.error('Error accessing microphone:', err);
+                });
+        });
+    </script>
+</body>
+
+</html>
