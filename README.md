@@ -40,6 +40,8 @@ This can help: https://blog.csdn.net/weixin_50836014/article/details/122135430
 ```
 
 ## Methods
+![image](https://github.com/MikeTai1218/HCI-Final-Project/assets/173041893/d641fa41-8ede-4715-aa61-baf6dce4a83a)
+
 
 ## Demo
 https://github.com/Mike1ife/HCI-Final-Project/assets/132564989/87781e38-2211-4bda-9994-89c64ea00984
